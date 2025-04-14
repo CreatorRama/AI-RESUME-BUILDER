@@ -4,54 +4,132 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaEnvelope, FaLock, FaSignInAlt } from 'react-icons/fa';
+import { useLogin } from '../../hooks/useAuth';
+import axios, { AxiosError } from 'axios';
 
-import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
-import { Checkbox } from '../../components/ui/FormElements';
-// import Loader from '../../components/ui/Loader';
 
 // Form validation schema
 const loginSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  rememberMe: z.boolean().optional()
+  email: z.string()
+    .min(1, 'Email is required')
+    .regex(
+      /^[a-zA-Z0-9]+([._-]?[a-zA-Z0-9]+)*@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$/,
+      'Invalid email format (e.g., user@example.com)'
+    )
+    .refine(
+      email => !email.includes('..') && 
+               !email.startsWith('.') && 
+               !email.startsWith('-') &&
+               !email.includes('@-') &&
+               !email.endsWith('.'),
+      {
+        message: 'Contains invalid character sequence'
+      }
+    ),
+  password: z.string()
+    .min(1, 'Password is required')
+    .min(6, 'Password must be at least 6 characters')
+    .max(32, 'Password must be less than 32 characters'),
+  rememberMe: z.boolean().optional().default(false)
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
+// Define the error response type
+interface ApiErrorResponse {
+  message?: string;
+  error?: string;
+}
+
 const Login = () => {
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
+  // Get full mutation object from useLogin hook
+  const mutation = useLogin();
+  
+  // Destructure needed properties
+  const { mutate, isError, isPending, error: loginError } = mutation;
+
+  // Initialize form with strict validation
+  const { 
+    register, 
+    handleSubmit, 
+    formState: { errors, isSubmitting }, 
+    trigger, // To manually trigger validation
+  } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: '',
       password: '',
       rememberMe: false
-    }
+    },
+    mode: 'onChange', // Validate on every change
+    reValidateMode: 'onChange',
   });
 
-  const onSubmit = async (data: LoginFormData) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // TODO: Implement API login call here
-      console.log('Login data:', data);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // On successful login, redirect to dashboard
-      navigate('/dashboard');
-    } catch (err) {
-      setError('Invalid email or password. Please try again.');
-      console.error('Login error:', err);
-    } finally {
-      setIsLoading(false);
+  // Handle API errors
+  // Handle API errors
+React.useEffect(() => {
+  if (isError && loginError) {
+    let errorMessage = 'An unexpected error occurred';
+    
+    // Check if it's an Axios error with response data
+    if (axios.isAxiosError<ApiErrorResponse>(loginError)) {
+      const serverError = loginError.response?.data;
+      errorMessage = serverError?.message || serverError?.error || loginError.message;
+    } else if (loginError instanceof Error) {
+      // Handle non-Axios errors
+      errorMessage = loginError.message;
     }
+    
+    setError(errorMessage);
+    
+    // Auto-clear error after a delay
+    const timer = setTimeout(() => {
+      if (mutation.reset) {
+        mutation.reset();
+        setError(null);
+      }
+    }, 3000);
+    
+    return () => clearTimeout(timer);
+  }
+}, [isError, loginError, mutation]);
+
+  // Debug logging for validation issues
+  React.useEffect(() => {
+    console.log('Current form errors:', errors);
+  }, [errors]);
+
+  const onSubmit = async (data: LoginFormData) => {
+    console.log('Form submitted with data:', data);
+    setError(null);
+    
+    // Verify validation before proceeding
+    const isValid = await trigger();
+    if (!isValid) {
+      console.log('Validation failed, not submitting');
+      return;
+    }
+    
+    const credentials = {
+      email: data.email,
+      password: data.password
+    };
+    
+    if (data.rememberMe) {
+      localStorage.setItem('rememberMe', 'true');
+    } else {
+      localStorage.removeItem('rememberMe');
+    }
+    
+    mutate(credentials, {
+      onSuccess: () => {
+        navigate('/dashboard');
+      }
+    });
   };
 
   return (
@@ -67,6 +145,7 @@ const Login = () => {
           </p>
         </div>
         
+        {/* API Error Display */}
         {error && (
           <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
             <div className="flex">
@@ -81,36 +160,71 @@ const Login = () => {
             </div>
           </div>
         )}
+      
         
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
-          <div className="rounded-md shadow-sm -space-y-px">
-            <Input
-              id="email"
-              type="email"
-              placeholder="Email address"
-              leftIcon={<FaEnvelope className="text-gray-400" />}
-              label="Email Address"
-              error={errors.email?.message}
-              {...register('email')}
-            />
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)} noValidate>
+          <div className="space-y-4">
+            {/* Email field */}
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                Email Address
+              </label>
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaEnvelope className="text-gray-400" />
+                </div>
+                <input
+                  id="email"
+                  type="email"
+                  className={`block w-full pl-10 pr-3 py-2 border ${
+                    errors.email ? 'border-red-300' : 'border-gray-300'
+                  } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
+                  placeholder="Email address"
+                  {...register('email')}
+                />
+              </div>
+              {errors.email && (
+                <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+              )}
+            </div>
             
-            <Input
-              id="password"
-              type="password"
-              placeholder="Password"
-              leftIcon={<FaLock className="text-gray-400" />}
-              label="Password"
-              error={errors.password?.message}
-              {...register('password')}
-            />
+            {/* Password field */}
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                Password
+              </label>
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaLock className="text-gray-400" />
+                </div>
+                <input
+                  id="password"
+                  type="password"
+                  className={`block w-full pl-10 pr-3 py-2 border ${
+                    errors.password ? 'border-red-300' : 'border-gray-300'
+                  } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
+                  placeholder="Password"
+                  {...register('password')}
+                />
+              </div>
+              {errors.password && (
+                <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center justify-between">
-            <Checkbox
-              id="remember-me"
-              label="Remember me"
-              {...register('rememberMe')}
-            />
+            <div className="flex items-center">
+              <input
+                id="remember-me"
+                type="checkbox"
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                {...register('rememberMe')}
+              />
+              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+                Remember me
+              </label>
+            </div>
             
             <div className="text-sm">
               <Link to="/auth/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
@@ -125,7 +239,7 @@ const Login = () => {
               fullWidth
               variant="primary"
               size="lg"
-              isLoading={isLoading}
+              isLoading={isPending || isSubmitting}
               icon={<FaSignInAlt />}
             >
               Sign in

@@ -2,8 +2,7 @@
 export interface UserData {
   email: string;
   password: string;
-  firstName: string;
-  lastName: string;
+  name:string
 }
 
 export interface Credentials {

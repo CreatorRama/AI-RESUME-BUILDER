@@ -4,16 +4,31 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaEnvelope, FaLock, FaUser, FaUserPlus } from 'react-icons/fa';
-
+import axios, { AxiosError } from 'axios';
+import { useRegister } from '../../hooks/useAuth';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import { Checkbox } from '../../components/ui/FormElements';
-// import Loader from '../../components/ui/Loader';
 
 // Form validation schema
 const registerSchema = z.object({
   fullName: z.string().min(2, 'Full name must be at least 2 characters'),
-  email: z.string().email('Please enter a valid email address'),
+  email: z.string()
+    .min(1, 'Email is required')
+    .regex(
+      /^[a-zA-Z0-9]+([._-]?[a-zA-Z0-9]+)*@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$/,
+      'Invalid email format (e.g., user@example.com)'
+    )
+    .refine(
+      email => !email.includes('..') && 
+               !email.startsWith('.') && 
+               !email.startsWith('-') &&
+               !email.includes('@-') &&
+               !email.endsWith('.'),
+      {
+        message: 'Contains invalid character sequence'
+      }
+    ),
   password: z.string()
     .min(8, 'Password must be at least 8 characters')
     .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
@@ -30,12 +45,28 @@ const registerSchema = z.object({
 
 type RegisterFormData = z.infer<typeof registerSchema>;
 
+// Define the error response type
+interface ApiErrorResponse {
+  message?: string;
+  error?: string;
+  errors?: {
+    [key: string]: string[];
+  };
+}
+
 const Register = () => {
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  
+  // Use the register mutation hook
+  const mutation = useRegister();
+  const { mutate, isPending, error: registerError } = mutation;
 
-  const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormData>({
+  const { 
+    register, 
+    handleSubmit, 
+    formState: { errors } 
+  } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       fullName: '',
@@ -46,27 +77,54 @@ const Register = () => {
     }
   });
 
-  const onSubmit = async (data: RegisterFormData) => {
-    try {
-      setIsLoading(true);
-      setError(null);
+  // Handle API errors
+  React.useEffect(() => {
+    if (registerError) {
+      let errorMessage = 'Registration failed. Please try again.';
       
-      // TODO: Implement API registration call here
-      console.log('Registration data:', data);
+      if (axios.isAxiosError<ApiErrorResponse>(registerError)) {
+        const serverError = registerError.response?.data;
+        errorMessage = serverError?.message || 
+                      serverError?.error || 
+                      registerError.message;
+      } else if (registerError instanceof Error) {
+        errorMessage = registerError.message;
+      }
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      setError(errorMessage);
       
-      // On successful registration, redirect to login
-      navigate('/auth/login', { 
-        state: { message: 'Registration successful! Please log in.' } 
-      });
-    } catch (err) {
-      setError('Registration failed. Please try again.');
-      console.error('Registration error:', err);
-    } finally {
-      setIsLoading(false);
+      // Auto-clear error after a delay
+      const timer = setTimeout(() => {
+        if (mutation.reset) {
+          mutation.reset();
+          setError(null);
+        }
+      }, 5000);
+      
+      return () => clearTimeout(timer);
     }
+  }, [registerError, mutation]);
+
+  const onSubmit = (data: RegisterFormData) => {
+    setError(null);
+    
+    // Prepare user data for the API
+    const userData = {
+      name: data.fullName,
+      email: data.email,
+      password: data.password
+    };
+
+    mutate(userData, {
+      onSuccess: () => {
+        navigate('/auth/login', { 
+          state: { 
+            message: 'Registration successful! Please log in.',
+            email: data.email // Optional: pre-fill email in login
+          } 
+        });
+      }
+    });
   };
 
   return (
@@ -167,7 +225,7 @@ const Register = () => {
               fullWidth
               variant="primary"
               size="lg"
-              isLoading={isLoading}
+              isLoading={isPending}
               icon={<FaUserPlus />}
             >
               Create Account
