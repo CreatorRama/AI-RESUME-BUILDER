@@ -13,15 +13,15 @@ import type {
 
 // --- Auth Endpoints ---
 export const authAPI = {
-  register: (userData: UserData) => apiClient.post('api/auth/register', userData,
+  register: (userData: UserData) => apiClient.post('auth/register', userData,
   ),
-  login: (credentials: Credentials) => apiClient.post('api/auth/login', credentials),
-  refreshToken: () => apiClient.post('api/auth/refresh-token'),
-  forgotPassword: (email: string) => apiClient.post('api/auth/forgot-password', { email }),
+  login: (credentials: Credentials) => apiClient.post('auth/login', credentials),
+  refreshToken: () => apiClient.post('auth/refresh-token'),
+  forgotPassword: (email: string) => apiClient.post('auth/forgot-password', { email }),
   resetPassword: (token: string, newPassword: string) =>
-    apiClient.post('api/auth/reset-password', { token, newPassword }),
-  getProfile: () => apiClient.get('api/auth/profile'),
-  updateProfile: (profileData: ProfileData) => apiClient.put('api/auth/profile', profileData),
+    apiClient.post('auth/reset-password', { token, newPassword }),
+  getProfile: () => apiClient.get('auth/profile'),
+  updateProfile: (profileData: ProfileData) => apiClient.put('auth/profile', profileData),
 };
 
 // --- Resume Endpoints ---

@@ -4,8 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaEnvelope, FaLock, FaUser, FaUserPlus } from 'react-icons/fa';
-import axios, { AxiosError } from 'axios';
-import { useRegister } from '../../hooks/useAuth';
+import axios from 'axios';
+import { useAuth } from '../../contexts/AuthContext';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import { Checkbox } from '../../components/ui/FormElements';
@@ -58,9 +58,9 @@ const Register = () => {
   const navigate = useNavigate();
   const [error, setError] = React.useState<string | null>(null);
   
-  // Use the register mutation hook
-  const mutation = useRegister();
-  const { mutate, isPending, error: registerError } = mutation;
+  // Use the register registerhook hook
+  const {register:registerhook} = useAuth();
+  const { mutate, isPending, error: registerError } = registerhook;
 
   const { 
     register, 
@@ -95,15 +95,15 @@ const Register = () => {
       
       // Auto-clear error after a delay
       const timer = setTimeout(() => {
-        if (mutation.reset) {
-          mutation.reset();
+        if (registerhook.reset) {
+          registerhook.reset();
           setError(null);
         }
       }, 5000);
       
       return () => clearTimeout(timer);
     }
-  }, [registerError, mutation]);
+  }, [registerError, registerhook]);
 
   const onSubmit = (data: RegisterFormData) => {
     setError(null);

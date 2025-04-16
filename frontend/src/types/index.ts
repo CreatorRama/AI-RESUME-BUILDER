@@ -2,7 +2,7 @@
 export interface UserData {
   email: string;
   password: string;
-  name:string
+  name: string;
 }
 
 export interface Credentials {
@@ -20,51 +20,68 @@ export interface ProfileData {
   profilePicture?: string;
 }
 
+// Updated ResumeData to match the structure used in ResumeBuilderPage
+export interface PersonalInfo {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  address: string;
+  linkedIn: string;
+  website: string;
+}
+
+export interface ExperienceItem {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  startDate: string;
+  endDate: string;
+  current: boolean;
+  description: string;
+}
+
+export interface EducationItem {
+  id: string;
+  degree: string;
+  school: string;
+  location: string;
+  startDate: string;
+  endDate: string;
+  description: string;
+}
+
+export interface CertificationItem {
+  id: string;
+  name: string;
+  issuer: string;
+  date: string;
+  description: string;
+}
+
 export interface ResumeData {
   title: string;
-  basics: {
-    name: string;
-    email: string;
-    phone: string;
-    location: string;
-    website?: string;
-    summary: string;
-  };
-  education: Array<{
-    institution: string;
-    area: string;
-    studyType: string;
-    startDate: string;
-    endDate?: string;
-    gpa?: string;
-    courses?: string[];
-  }>;
-  work: Array<{
-    company: string;
-    position: string;
-    startDate: string;
-    endDate?: string;
-    summary: string;
-    highlights: string[];
-  }>;
-  skills: Array<{
-    name: string;
-    level?: string;
-    keywords?: string[];
-  }>;
-  // Add other resume sections as needed
+  personal: PersonalInfo;
+  summary: string;
+  experience: ExperienceItem[];
+  education: EducationItem[];
+  skills: string[];
+  certifications: CertificationItem[];
+  coverLetter?: CoverLetterData; // Optional cover letter
 }
 
 export interface CoverLetterData {
   title: string;
-  resumeId?: string;
-  jobDescription?: string;
-  content: string;
-  recipient?: {
-    name?: string;
-    company?: string;
-    address?: string;
+  recipient: {
+    name: string;
+    company: string;
+    position: string;
+    address: string;
   };
+  content: string;
+  closingStatement: string;
+  signature: string;
 }
 
 export interface PortfolioData {
@@ -104,4 +121,8 @@ export interface Filters {
   experience?: string;
 }
 
-// Add other type definitions as needed
+// Template options type
+export type ResumeTemplate = 'modern' | 'professional' | 'creative' | 'minimalist';
+
+// Sections for the resume builder
+export type ResumeSection = 'personal' | 'summary' | 'experience' | 'education' | 'skills' | 'certifications' | 'coverLetter';

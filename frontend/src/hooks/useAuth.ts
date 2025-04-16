@@ -78,8 +78,12 @@ export const useProfile = () => {
   return useQuery({
     queryKey: authKeys.profile(),
     queryFn: () => authAPI.getProfile(),
-    // If you're using cookies exclusively, remove localStorage check
-    enabled: true,
+    refetchOnMount: false,
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
+  staleTime: Infinity, // Add this to prevent refetching
+  // Also add an explicit 'enabled' check if applicable
+  // enabled: localStorage.getItem('isAuthenticated') === 'true',
   });
 };
 

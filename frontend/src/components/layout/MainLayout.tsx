@@ -1,17 +1,15 @@
 // components/layout/MainLayout.tsx
 import { useState } from 'react';
-import { Outlet, Link, useNavigate } from 'react-router-dom';
+import { Outlet, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { FiMenu, FiX, FiHome, FiFileText, FiUser, FiSettings, FiLogOut } from 'react-icons/fi';
 
 const MainLayout = () => {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
-    navigate('/auth/login');
   };
 
   const toggleSidebar = () => {

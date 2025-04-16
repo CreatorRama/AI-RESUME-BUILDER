@@ -2,17 +2,20 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { FaEnvelope, FaLock, FaSignInAlt } from 'react-icons/fa';
-import { useLogin } from '../../hooks/useAuth';
-import axios, { AxiosError } from 'axios';
-
+import { useAuth } from '../../contexts/AuthContext';
+import axios  from 'axios';
 import Button from '../../components/ui/Button';
+
+
+
+
 
 // Form validation schema
 const loginSchema = z.object({
   email: z.string()
-    .min(1, 'Email is required')
+  .min(1, 'Email is required')
     .regex(
       /^[a-zA-Z0-9]+([._-]?[a-zA-Z0-9]+)*@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$/,
       'Invalid email format (e.g., user@example.com)'
@@ -45,12 +48,15 @@ interface ApiErrorResponse {
 const Login = () => {
   const navigate = useNavigate();
   const [error, setError] = React.useState<string | null>(null);
+  const location=useLocation()
+  
+  console.log(location)
 
-  // Get full mutation object from useLogin hook
-  const mutation = useLogin();
+  // Get full login object from useLogin hook
+  const {login}= useAuth();
   
   // Destructure needed properties
-  const { mutate, isError, isPending, error: loginError } = mutation;
+  const { mutate, isError, isPending, error: loginError } = login;
 
   // Initialize form with strict validation
   const { 
@@ -88,15 +94,15 @@ React.useEffect(() => {
     
     // Auto-clear error after a delay
     const timer = setTimeout(() => {
-      if (mutation.reset) {
-        mutation.reset();
+      if (login.reset) {
+        login.reset();
         setError(null);
       }
     }, 3000);
     
     return () => clearTimeout(timer);
   }
-}, [isError, loginError, mutation]);
+}, [isError, loginError, login]);
 
   // Debug logging for validation issues
   React.useEffect(() => {

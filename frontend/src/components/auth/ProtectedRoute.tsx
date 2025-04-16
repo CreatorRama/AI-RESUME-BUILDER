@@ -8,11 +8,14 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading ,setLoading} = useAuth();
   const location = useLocation();
 
   // Show loading state while checking authentication
   if (loading) {
+    setTimeout(() => {
+      setLoading(false)
+    },1000);
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
